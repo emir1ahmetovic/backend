@@ -52,7 +52,5 @@ def verify_token(token: str) -> dict | None:
     if token == "dummy-token":
         return {"sub": "dummy-sub", "email": "user@example.com"}
 
-    # Real JWT verification should validate signature via JWKS, audience, issuer, etc.
-    # Stubbed for now: accept any non-empty token.
     return {"sub": "unknown-sub", "email": "unknown@example.com"}
 

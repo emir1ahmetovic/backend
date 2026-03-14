@@ -12,10 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_summary_json(raw: str) -> Dict[str, Any]:
-    """
-    Best-effort JSON parsing for Bedrock summarize_text output.
-    Falls back to a simple wrapper if parsing fails.
-    """
+   
     if not raw:
         return {}
 
@@ -23,7 +20,7 @@ def _parse_summary_json(raw: str) -> Dict[str, Any]:
         parsed = json.loads(raw)
         if isinstance(parsed, dict):
             return parsed
-        # If the model returned a list or other structure, wrap it.
+
         return {"data": parsed}
     except Exception:
         logger.warning("Failed to parse summary JSON; returning raw text wrapper.")
@@ -31,13 +28,7 @@ def _parse_summary_json(raw: str) -> Dict[str, Any]:
 
 
 def summarize_by_paragraphs(text: str) -> Dict[str, Any]:
-    """
-    High-level summarization workflow:
-
-    - Split the input text into paragraph-like chunks.
-    - Summarize each chunk with Bedrock.
-    - Aggregate per-chunk summaries into a combined summary.
-    """
+    
     settings = get_settings()
     paragraphs: List[str] = split_into_paragraphs(
         text,
