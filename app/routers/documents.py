@@ -45,8 +45,7 @@ def create_document(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ) -> DocumentRead:
-    # Persist the document metadata first so that the background task
-    # has a stable primary key to work with.
+    
     doc = Document(
         project_id=project_id,
         filename=payload.filename,
@@ -81,7 +80,6 @@ def delete_document(
     if doc is None or doc.project_id != project_id:
         return {"ok": False, "project_id": project_id, "deleted_document_id": None}
 
-    # Best-effort delete from S3; ignore failures for now.
     s3.delete_file(bucket=settings.s3_bucket_name, key=doc.s3_key)
 
     db.delete(doc)
