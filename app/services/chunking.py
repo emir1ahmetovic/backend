@@ -9,11 +9,7 @@ def split_into_paragraphs(
     min_chars: int = 50,
     max_chars: int = 4000,
 ) -> List[str]:
-    """
-    Split text into paragraph-like chunks, primarily using blank lines as
-    boundaries, with basic merging of very short paragraphs and an upper
-    bound on chunk size.
-    """
+   
     if not text or not text.strip():
         return []
 

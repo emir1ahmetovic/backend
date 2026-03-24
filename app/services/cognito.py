@@ -53,4 +53,3 @@ def verify_token(token: str) -> dict | None:
         return {"sub": "dummy-sub", "email": "user@example.com"}
 
     return {"sub": "unknown-sub", "email": "unknown@example.com"}
-
