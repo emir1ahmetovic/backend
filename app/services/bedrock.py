@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from functools import lru_cache
-from typing import Any
+from typing import Any, Iterator
 
 import boto3
 
@@ -50,7 +50,10 @@ Rules:
 - If the answer is not present in the context, respond with: "The provided context does not contain enough information to answer this question."
 - Be concise, factual, and direct.
 - Do NOT add commentary or unnecessary explanation.
-- Structure your answer clearly. Use bullet points or numbered steps only when the answer is a list or process."""
+- Structure your answer clearly. Use bullet points or numbered steps only when the answer is a list or process.
+- Context blocks may include source labels like [S1], [S2], etc.
+- For claims grounded in context, include one or more source labels inline (example: "It supports SSE [S1].").
+- Never invent source labels; only cite labels present in the provided context."""
 
 ANSWER_NO_CONTEXT_SYSTEM_PROMPT = """You are a knowledgeable and precise research assistant.
 Your task is to answer the user's question accurately and concisely.
@@ -154,6 +157,68 @@ def answer_question(
         system = ANSWER_NO_CONTEXT_SYSTEM_PROMPT
 
     return _invoke_mistral(prompt, system=system, max_tokens=max_tokens)
+
+
+def stream_answer_question(
+    question: str,
+    context: str | None = None,
+    max_tokens: int = 1024,
+) -> Iterator[str]:
+    if context:
+        prompt = (
+            f"Context:\n{context}\n\n"
+            f"Question: {question}\n\nAnswer:"
+        )
+        system = ANSWER_SYSTEM_PROMPT
+    else:
+        prompt = f"Question: {question}\n\nAnswer:"
+        system = ANSWER_NO_CONTEXT_SYSTEM_PROMPT
+
+    messages: list[dict[str, Any]] = []
+    if system:
+        messages.append({
+            "role": "system",
+            "content": [{"type": "text", "text": system}],
+        })
+    messages.append({
+        "role": "user",
+        "content": [{"type": "text", "text": prompt}],
+    })
+
+    body: dict[str, Any] = {
+        "max_tokens": max_tokens,
+        "temperature": 0.3,
+        "messages": messages,
+    }
+
+    try:
+        response = _get_client().invoke_model_with_response_stream(
+            modelId=BEDROCK_MODEL_ID,
+            contentType="application/json",
+            accept="application/json",
+            body=json.dumps(body),
+        )
+        for event in response.get("body", []):
+            chunk = event.get("chunk")
+            if chunk:
+                # Parse bytes to json dict
+                chunk_obj = json.loads(chunk.get("bytes").decode())
+                
+                # Depending on Mistral version or ConverseAPI equivalent response shapes:
+                # Try locating the delta text in common paths
+                text = ""
+                # path 1: choices[0].delta.content
+                if "choices" in chunk_obj and isinstance(chunk_obj["choices"], list):
+                    delta = chunk_obj["choices"][0].get("delta", {})
+                    if "content" in delta:
+                        text = delta["content"]
+                
+                if text:
+                    yield text
+
+    except Exception as e:
+        logger.exception("Error streaming Bedrock model: %s", e)
+        yield "An error occurred while generating the answer."
 
 
 def generate_questions(text: str, count: int = 5) -> list[str]:
