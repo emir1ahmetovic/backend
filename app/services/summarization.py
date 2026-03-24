@@ -75,4 +75,3 @@ def summarize_by_paragraphs(text: str) -> Dict[str, Any]:
         "paragraphs": results,
         "combined_summary": combined_summary,
     }
-
